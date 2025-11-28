@@ -1,54 +1,60 @@
-import { IAllWorkspacesResponse, IWorkspace, getAllWorkspaces, deleteWorkspace } from "@/client/workspace";
+import { IUser, IUsersResponse, getUsers } from "@/client/user";
 import DefaultTable from "@/components/shared/ui/default-table";
 import DefaultTableBtn from "@/components/shared/ui/default-table-btn";
 import { ISO8601DateTime } from "@/types/common";
-import { Alert, Button, Dropdown, MenuProps, Popconfirm, message } from "antd";
+import { Alert, Button, Dropdown, MenuProps, message, Select } from "antd";
 import { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { getAllWorkspaces, IWorkspace } from "@/client/workspace";
 
-const WorkspaceList = () => {
+const UserList = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [data, setData] = useState<IAllWorkspacesResponse | null>(null);
+  const [data, setData] = useState<IUsersResponse | null>(null);
+  const [workspaces, setWorkspaces] = useState<IWorkspace[]>([]);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<number | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
   const router = useRouter();
 
+  // 근무지 목록 가져오기
   const fetchWorkspaces = useCallback(async () => {
     try {
-      setIsLoading(true);
-      setError(null);
       const response = await getAllWorkspaces();
-      setData(response.data);
-    } catch (err: any) {
-      setError(err);
-      const errorMessage = err?.response?.data?.message || "근무지 목록을 불러오는 중 오류가 발생했습니다.";
-      messageApi.error(errorMessage);
-    } finally {
-      setIsLoading(false);
+      setWorkspaces(response.data.data || []);
+    } catch (err) {
+      console.error("근무지 목록 조회 오류:", err);
     }
-  }, [messageApi]);
+  }, []);
+
+  // 근로자 목록 가져오기
+  const fetchUsers = useCallback(
+    async (workspaceId?: number) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const response = await getUsers(workspaceId ? { workspaceId } : undefined);
+        setData(response.data);
+      } catch (err: any) {
+        setError(err);
+        const errorMessage = err?.response?.data?.message || "근로자 목록을 불러오는 중 오류가 발생했습니다.";
+        messageApi.error(errorMessage);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [messageApi]
+  );
 
   useEffect(() => {
     fetchWorkspaces();
   }, [fetchWorkspaces]);
 
-  const handleDelete = useCallback(
-    async (id: number) => {
-      try {
-        await deleteWorkspace(id);
-        messageApi.success("근무지가 삭제되었습니다.");
-        // 목록 다시 불러오기
-        await fetchWorkspaces();
-      } catch (err: any) {
-        const errorMessage = err?.response?.data?.message || "근무지 삭제 중 오류가 발생했습니다.";
-        messageApi.error(errorMessage);
-      }
-    },
-    [fetchWorkspaces, messageApi]
-  );
+  useEffect(() => {
+    fetchUsers(selectedWorkspaceId);
+  }, [fetchUsers, selectedWorkspaceId]);
 
   const handleChangePage = useCallback(
     (pageNumber: number) => {
@@ -63,6 +69,13 @@ const WorkspaceList = () => {
   const onSelectChange = useCallback((newSelectedRowKeys: React.Key[]) => {
     setSelectedRowKeys(newSelectedRowKeys);
   }, []);
+
+  const handleWorkspaceChange = useCallback(
+    (value: number | undefined) => {
+      setSelectedWorkspaceId(value);
+    },
+    []
+  );
 
   const modifyDropdownItems: MenuProps["items"] = useMemo(
     () => [
@@ -80,57 +93,33 @@ const WorkspaceList = () => {
   };
   const hasSelected = selectedRowKeys.length > 0;
 
-  const columns: ColumnsType<IWorkspace> = [
+  const columns: ColumnsType<IUser> = [
     {
-      key: "action",
-      width: 120,
-      align: "center",
-      render: (_value: unknown, record: IWorkspace) => {
-        return (
-          <span className="flex justify-center gap-2">
-            <a
-              className="px-2 py-1 text-sm btn"
-              onClick={() => {
-                // 목록에서 가져온 해당 아이템 데이터를 그대로 저장
-                const dataToStore = JSON.stringify(record);
-                sessionStorage.setItem("workspaceEditData", dataToStore);
-                console.log("근무지 데이터 저장:", record);
-                // 저장 후 페이지 이동
-                router.push(`/workplace/edit/${record.id}`);
-              }}
-            >
-              수정
-            </a>
-            <Popconfirm
-              title="근무지를 삭제하시겠습니까?"
-              onConfirm={() => handleDelete(record.id)}
-              okText="예"
-              cancelText="아니오"
-            >
-              <a className="px-2 py-1 text-sm btn">삭제</a>
-            </Popconfirm>
-          </span>
-        );
-      },
+      title: "이름",
+      dataIndex: "name",
+      width: 150,
     },
     {
-      title: "근무지명",
-      dataIndex: "name",
+      title: "사용자명",
+      dataIndex: "username",
+      width: 150,
+    },
+    {
+      title: "이메일",
+      dataIndex: "email",
       width: 200,
     },
     {
-      title: "설명",
-      dataIndex: "description",
-      width: 250,
-      render: (value: string | null | undefined) => {
-        return value || <span className="text-gray-400">-</span>;
-      },
+      title: "권한",
+      dataIndex: "role",
+      width: 120,
+      align: "center",
     },
     {
-      title: "주소",
-      render: (_value: unknown, record: IWorkspace) => {
-        return `${record.basicAddr} ${record.addrDetail}`;
-      },
+      title: "소속ID",
+      dataIndex: "affiliationId",
+      width: 120,
+      align: "center",
     },
     {
       title: "생성일시",
@@ -165,14 +154,23 @@ const WorkspaceList = () => {
         </div>
 
         <div className="flex-item-list">
-
-          <Button type="primary" onClick={() => router.push("/workplace/new")}>
-            근무지 등록
-          </Button>
+          <Select
+            placeholder="근무지 필터"
+            allowClear
+            style={{ width: 200, marginRight: 8 }}
+            value={selectedWorkspaceId}
+            onChange={handleWorkspaceChange}
+          >
+            {workspaces.map((workspace) => (
+              <Select.Option key={workspace.id} value={workspace.id}>
+                {workspace.name}
+              </Select.Option>
+            ))}
+          </Select>
         </div>
       </DefaultTableBtn>
 
-      <DefaultTable<IWorkspace>
+      <DefaultTable<IUser>
         rowSelection={rowSelection}
         columns={columns}
         dataSource={data?.data || []}
@@ -191,5 +189,5 @@ const WorkspaceList = () => {
   );
 };
 
-export default React.memo(WorkspaceList);
+export default React.memo(UserList);
 

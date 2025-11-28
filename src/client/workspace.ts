@@ -9,11 +9,18 @@ export interface IWorkspace {
   addrDetail: string;
   latitude: number;
   longitude: number;
-  createdBy: number;
   createdAt: string;
 }
 
 export interface ICreateWorkspaceRequest {
+  name: string;
+  description?: string;
+  postNo: string;
+  basicAddr: string;
+  addrDetail: string;
+}
+
+export interface IUpdateWorkspaceRequest {
   name: string;
   description?: string;
   postNo: string;
@@ -45,6 +52,14 @@ export const createWorkspace = (value: ICreateWorkspaceRequest) => {
 
 export const getAllWorkspaces = () => {
   return fetchApi.get<IAllWorkspacesResponse>(`/api/admin/workspaces`);
+};
+
+export const getWorkspace = (id: number) => {
+  return fetchApi.get<IApiResponse<IWorkspace>>(`/api/admin/workspaces/${id}`);
+};
+
+export const updateWorkspace = (id: number, value: IUpdateWorkspaceRequest) => {
+  return fetchApi.put<IApiResponse<IWorkspace>>(`/api/admin/workspaces/${id}`, value);
 };
 
 export const deleteWorkspace = (id: number) => {

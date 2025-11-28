@@ -1,11 +1,11 @@
-import { createWorkspace, ICreateWorkspaceRequest } from "@/client/workspace";
+import { createWorkspace, ICreateWorkspaceRequest, IUpdateWorkspaceRequest, updateWorkspace } from "@/client/workspace";
 import DefaultForm from "@/components/shared/form/ui/default-form";
 import FormGroup from "@/components/shared/form/ui/form-group";
 import FormSection from "@/components/shared/form/ui/form-section";
 import { Button, Form, Input, message, Modal } from "antd";
 import { useForm } from "antd/lib/form/Form";
 import { useRouter } from "next/router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import DaumPostcode from "react-daum-postcode";
 
 interface IWorkspaceFormValue {
@@ -28,11 +28,18 @@ const WorkspaceForm = ({ id, initialValues }: IWorkspaceFormProps) => {
   const [messageApi, contextHolder] = message.useMessage();
   const router = useRouter();
 
+  // initialValues가 변경될 때 form 업데이트
+  useEffect(() => {
+    if (initialValues) {
+      form.setFieldsValue(initialValues);
+    }
+  }, [initialValues, form]);
+
   const handleFinish = async (formValue: IWorkspaceFormValue) => {
     try {
       setIsLoading(true);
 
-      const request: ICreateWorkspaceRequest = {
+      const request: ICreateWorkspaceRequest | IUpdateWorkspaceRequest = {
         name: formValue.name,
         description: formValue.description,
         postNo: formValue.postNo,
@@ -40,10 +47,17 @@ const WorkspaceForm = ({ id, initialValues }: IWorkspaceFormProps) => {
         addrDetail: formValue.addrDetail,
       };
 
-      await createWorkspace(request);
-      messageApi.success("근무지가 등록되었습니다");
+      if (id) {
+        // 수정
+        await updateWorkspace(Number(id), request);
+        messageApi.success("근무지가 수정되었습니다");
+      } else {
+        // 생성
+        await createWorkspace(request);
+        messageApi.success("근무지가 등록되었습니다");
+      }
 
-      // 등록 성공 후 목록 페이지로 이동
+      // 성공 후 목록 페이지로 이동
       setTimeout(() => {
         router.push("/workplace/list");
       }, 1000);

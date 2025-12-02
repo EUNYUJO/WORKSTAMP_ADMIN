@@ -40,6 +40,20 @@ const mainMenuData: IMenu[] = [
       },
     ],
   },
+  {
+    id: "contract",
+    name: "계약서 관리  ",
+    icon: <Package2 className="w-5 h-5" />,
+    submenu: [
+      {
+        id: "contractList",
+        name: "계약서 목록",
+        link: {
+          path: "/contract/list",
+        },
+      },
+    ],
+  },
 ];
 
 const devMenuData: IMenu[] = [

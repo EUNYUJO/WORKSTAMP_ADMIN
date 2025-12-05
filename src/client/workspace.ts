@@ -7,6 +7,7 @@ export interface IWorkspace {
   postNo: string;
   basicAddr: string;
   addrDetail: string;
+  region?: string;
   latitude: number;
   longitude: number;
   createdAt: string;
@@ -18,6 +19,7 @@ export interface ICreateWorkspaceRequest {
   postNo: string;
   basicAddr: string;
   addrDetail: string;
+  region?: string;
 }
 
 export interface IUpdateWorkspaceRequest {
@@ -26,6 +28,7 @@ export interface IUpdateWorkspaceRequest {
   postNo: string;
   basicAddr: string;
   addrDetail: string;
+  region?: string;
 }
 
 export interface IApiResponse<T> {

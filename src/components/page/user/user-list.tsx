@@ -1,4 +1,5 @@
 import { IUser, IUsersResponse, getUsers } from "@/client/user";
+import { IAffiliation, getAllAffiliations } from "@/client/affiliation";
 import DefaultTable from "@/components/shared/ui/default-table";
 import DefaultTableBtn from "@/components/shared/ui/default-table-btn";
 import { ISO8601DateTime } from "@/types/common";
@@ -13,6 +14,7 @@ const UserList = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [data, setData] = useState<IUsersResponse | null>(null);
   const [workspaces, setWorkspaces] = useState<IWorkspace[]>([]);
+  const [affiliations, setAffiliations] = useState<IAffiliation[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<number | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -28,6 +30,25 @@ const UserList = () => {
       console.error("근무지 목록 조회 오류:", err);
     }
   }, []);
+
+  // 소속 목록 조회
+  const fetchAffiliations = useCallback(async () => {
+    try {
+      const response = await getAllAffiliations();
+      setAffiliations(response.data.data || []);
+    } catch (err) {
+      console.error("소속 목록 조회 실패:", err);
+    }
+  }, []);
+
+  // 소속 ID로 소속 이름 찾기
+  const getAffiliationName = useCallback(
+    (affiliationId: number) => {
+      const affiliation = affiliations.find((aff) => aff.id === affiliationId);
+      return affiliation?.name || affiliationId.toString();
+    },
+    [affiliations]
+  );
 
   // 근로자 목록 가져오기
   const fetchUsers = useCallback(
@@ -50,7 +71,8 @@ const UserList = () => {
 
   useEffect(() => {
     fetchWorkspaces();
-  }, [fetchWorkspaces]);
+    fetchAffiliations();
+  }, [fetchWorkspaces, fetchAffiliations]);
 
   useEffect(() => {
     fetchUsers(selectedWorkspaceId);
@@ -116,10 +138,13 @@ const UserList = () => {
       align: "center",
     },
     {
-      title: "소속ID",
+      title: "소속",
       dataIndex: "affiliationId",
-      width: 120,
+      width: 150,
       align: "center",
+      render: (affiliationId: number) => {
+        return getAffiliationName(affiliationId);
+      },
     },
     {
       title: "생성일시",

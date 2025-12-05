@@ -15,10 +15,13 @@ import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 
 interface IContractFormValue {
+  affiliationCode: string;
+  contractorCode: string;
+  region: string;
+  deliveryAppId: string;
   name: string;
   phoneNumber: string;
-  businessRegistrationNumber: string;
-  affiliationCode: string;
+  vehicleNumber: string;
 }
 
 interface IContractFormProps {
@@ -44,6 +47,10 @@ const ContractForm = ({ id, initialValues }: IContractFormProps) => {
           console.error("전화번호 복호화 실패:", e);
         }
       }
+      // 하이픈 제거
+      if (formValues.phoneNumber) {
+        formValues.phoneNumber = formValues.phoneNumber.replace(/-/g, "");
+      }
       form.setFieldsValue(formValues);
     }
   }, [initialValues, form]);
@@ -52,26 +59,33 @@ const ContractForm = ({ id, initialValues }: IContractFormProps) => {
     try {
       setIsLoading(true);
 
-      // 전화번호 암호화
-      const encryptedPhoneNumber = encryptAES(formValue.phoneNumber);
+      // 전화번호에서 하이픈 제거 후 암호화
+      const phoneNumberWithoutHyphen = formValue.phoneNumber.replace(/-/g, "");
+      const encryptedPhoneNumber = encryptAES(phoneNumberWithoutHyphen);
 
       if (id) {
         // 수정
         const request: IUpdateContractRequest = {
+          affiliationCode: formValue.affiliationCode,
+          contractorCode: formValue.contractorCode,
+          region: formValue.region,
+          deliveryAppId: formValue.deliveryAppId,
           name: formValue.name,
           phoneNumber: encryptedPhoneNumber,
-          businessRegistrationNumber: formValue.businessRegistrationNumber,
-          affiliationCode: formValue.affiliationCode,
+          vehicleNumber: formValue.vehicleNumber,
         };
         await updateContract(Number(id), request);
         messageApi.success("계약서가 수정되었습니다");
       } else {
         // 생성
         const request: ICreateContractRequest = {
+          affiliationCode: formValue.affiliationCode,
+          contractorCode: formValue.contractorCode,
+          region: formValue.region,
+          deliveryAppId: formValue.deliveryAppId,
           name: formValue.name,
           phoneNumber: encryptedPhoneNumber,
-          businessRegistrationNumber: formValue.businessRegistrationNumber,
-          affiliationCode: formValue.affiliationCode,
+          vehicleNumber: formValue.vehicleNumber,
         };
         await createContract(request);
         messageApi.success("계약서가 등록되었습니다");
@@ -94,8 +108,62 @@ const ContractForm = ({ id, initialValues }: IContractFormProps) => {
       {contextHolder}
       <DefaultForm<IContractFormValue> form={form} onFinish={handleFinish}>
         <FormSection title="기본정보" description="계약서 기본 정보를 입력해주세요">
+          <FormGroup title="소속코드*">
+            <Form.Item
+              name="affiliationCode"
+              rules={[
+                { required: true, message: "소속코드를 입력해주세요" },
+                { pattern: /^[0-9]{6}$/, message: "소속코드는 6자리 숫자여야 합니다" },
+              ]}
+            >
+              <Input placeholder="소속코드를 입력하세요 (6자리 숫자)" />
+            </Form.Item>
+          </FormGroup>
+
+          <FormGroup title="계약자코드*">
+            <Form.Item
+              name="contractorCode"
+              rules={[
+                { required: true, message: "계약자코드를 입력해주세요" },
+                { max: 50, message: "계약자코드는 50자 이하여야 합니다" },
+              ]}
+            >
+              <Input placeholder="계약자코드를 입력하세요" />
+            </Form.Item>
+          </FormGroup>
+
+          <FormGroup title="지역*">
+            <Form.Item
+              name="region"
+              rules={[
+                { required: true, message: "지역을 입력해주세요" },
+                { max: 100, message: "지역은 100자 이하여야 합니다" },
+              ]}
+            >
+              <Input placeholder="지역을 입력하세요" />
+            </Form.Item>
+          </FormGroup>
+
+          <FormGroup title="배송앱ID*">
+            <Form.Item
+              name="deliveryAppId"
+              rules={[
+                { required: true, message: "배송앱ID를 입력해주세요" },
+                { max: 100, message: "배송앱ID는 100자 이하여야 합니다" },
+              ]}
+            >
+              <Input placeholder="배송앱ID를 입력하세요" />
+            </Form.Item>
+          </FormGroup>
+
           <FormGroup title="이름*">
-            <Form.Item name="name" rules={[{ required: true, message: "이름을 입력해주세요" }]}>
+            <Form.Item
+              name="name"
+              rules={[
+                { required: true, message: "이름을 입력해주세요" },
+                { max: 100, message: "이름은 100자 이하여야 합니다" },
+              ]}
+            >
               <Input placeholder="이름을 입력하세요" />
             </Form.Item>
           </FormGroup>
@@ -103,33 +171,25 @@ const ContractForm = ({ id, initialValues }: IContractFormProps) => {
           <FormGroup title="전화번호*">
             <Form.Item
               name="phoneNumber"
+              normalize={(value) => value?.replace(/-/g, "") || ""}
               rules={[
                 { required: true, message: "전화번호를 입력해주세요" },
-                { pattern: /^[0-9-]+$/, message: "올바른 전화번호 형식을 입력해주세요" },
+                { pattern: /^[0-9]+$/, message: "숫자만 입력해주세요 (하이픈 제외)" },
               ]}
             >
-              <Input placeholder="전화번호를 입력하세요 (예: 010-1234-5678)" />
+              <Input placeholder="전화번호를 입력하세요 (예: 01012345678)" />
             </Form.Item>
           </FormGroup>
 
-          <FormGroup title="사업자등록번호*">
+          <FormGroup title="차량번호*">
             <Form.Item
-              name="businessRegistrationNumber"
+              name="vehicleNumber"
               rules={[
-                { required: true, message: "사업자등록번호를 입력해주세요" },
-                { pattern: /^[0-9-]+$/, message: "올바른 사업자등록번호 형식을 입력해주세요" },
+                { required: true, message: "차량번호를 입력해주세요" },
+                { max: 20, message: "차량번호는 20자 이하여야 합니다" },
               ]}
             >
-              <Input placeholder="사업자등록번호를 입력하세요" />
-            </Form.Item>
-          </FormGroup>
-
-          <FormGroup title="소속코드*">
-            <Form.Item
-              name="affiliationCode"
-              rules={[{ required: true, message: "소속코드를 입력해주세요" }]}
-            >
-              <Input placeholder="소속코드를 입력하세요" />
+              <Input placeholder="차량번호를 입력하세요" />
             </Form.Item>
           </FormGroup>
         </FormSection>

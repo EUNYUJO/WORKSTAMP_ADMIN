@@ -133,6 +133,14 @@ const WorkspaceList = () => {
       },
     },
     {
+      title: "지역",
+      dataIndex: "region",
+      width: 120,
+      render: (value: string | null | undefined) => {
+        return value || <span className="text-gray-400">-</span>;
+      },
+    },
+    {
       title: "생성일시",
       dataIndex: "createdAt",
       align: "center",

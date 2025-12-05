@@ -1,4 +1,5 @@
 import { IAllContractsResponse, IContract, getAllContracts, deleteContract } from "@/client/contract";
+import { IAffiliation, getAllAffiliations } from "@/client/affiliation";
 import DefaultTable from "@/components/shared/ui/default-table";
 import DefaultTableBtn from "@/components/shared/ui/default-table-btn";
 import { ISO8601DateTime } from "@/types/common";
@@ -11,6 +12,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 const ContractList = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [data, setData] = useState<IAllContractsResponse | null>(null);
+  const [affiliations, setAffiliations] = useState<IAffiliation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
@@ -18,6 +20,25 @@ const ContractList = () => {
 
   const currentPage = Number(router.query.page || 1);
   const pageSize = 10;
+
+  // 소속 목록 조회
+  const fetchAffiliations = useCallback(async () => {
+    try {
+      const response = await getAllAffiliations();
+      setAffiliations(response.data.data || []);
+    } catch (err) {
+      console.error("소속 목록 조회 실패:", err);
+    }
+  }, []);
+
+  // 소속 ID로 소속 이름 찾기
+  const getAffiliationName = useCallback(
+    (affiliationId: number) => {
+      const affiliation = affiliations.find((aff) => aff.id === affiliationId);
+      return affiliation?.name || affiliationId.toString();
+    },
+    [affiliations]
+  );
 
   const fetchContracts = useCallback(async () => {
     try {
@@ -36,7 +57,8 @@ const ContractList = () => {
 
   useEffect(() => {
     fetchContracts();
-  }, [fetchContracts]);
+    fetchAffiliations();
+  }, [fetchContracts, fetchAffiliations]);
 
   const handleDelete = useCallback(
     async (id: number) => {
@@ -127,15 +149,33 @@ const ContractList = () => {
       width: 150,
     },
     {
-      title: "사업자등록번호",
-      dataIndex: "businessRegistrationNumber",
-      width: 200,
+      title: "계약자코드",
+      dataIndex: "contractorCode",
+      width: 150,
     },
     {
-      title: "소속ID",
-      dataIndex: "affiliationId",
+      title: "지역",
+      dataIndex: "region",
       width: 120,
+    },
+    {
+      title: "배송앱ID",
+      dataIndex: "deliveryAppId",
+      width: 150,
+    },
+    {
+      title: "차량번호",
+      dataIndex: "vehicleNumber",
+      width: 120,
+    },
+    {
+      title: "소속",
+      dataIndex: "affiliationId",
+      width: 150,
       align: "center",
+      render: (affiliationId: number) => {
+        return getAffiliationName(affiliationId);
+      },
     },
     {
       title: "생성일시",

@@ -3,25 +3,34 @@ import { fetchApi } from "./base";
 export interface IContract {
   id: number;
   affiliationId: number;
+  contractorCode: string;
+  region: string;
+  deliveryAppId: string;
   name: string;
   phoneNumber: string;
-  businessRegistrationNumber: string;
+  vehicleNumber: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ICreateContractRequest {
+  affiliationCode: string;
+  contractorCode: string;
+  region: string;
+  deliveryAppId: string;
   name: string;
   phoneNumber: string;
-  businessRegistrationNumber: string;
-  affiliationCode: string;
+  vehicleNumber: string;
 }
 
 export interface IUpdateContractRequest {
+  affiliationCode: string;
+  contractorCode: string;
+  region: string;
+  deliveryAppId: string;
   name: string;
   phoneNumber: string;
-  businessRegistrationNumber: string;
-  affiliationCode?: string;
+  vehicleNumber: string;
 }
 
 export interface IApiResponse<T> {

@@ -71,10 +71,13 @@ const ContractEditPage: IDefaultLayoutPage = () => {
 
   // affiliationCode는 API 응답에 없으므로 빈 문자열로 설정
   const initialValues = {
+    affiliationCode: "",
+    contractorCode: data.contractorCode,
+    region: data.region,
+    deliveryAppId: data.deliveryAppId,
     name: data.name,
     phoneNumber: data.phoneNumber,
-    businessRegistrationNumber: data.businessRegistrationNumber,
-    affiliationCode: "",
+    vehicleNumber: data.vehicleNumber,
   };
 
   return <ContractForm id={router.query.id as string} initialValues={initialValues} />;

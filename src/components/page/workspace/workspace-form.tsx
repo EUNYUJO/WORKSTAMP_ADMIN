@@ -14,6 +14,7 @@ interface IWorkspaceFormValue {
   postNo: string;
   basicAddr: string;
   addrDetail: string;
+  region?: string;
 }
 
 interface IWorkspaceFormProps {
@@ -45,6 +46,7 @@ const WorkspaceForm = ({ id, initialValues }: IWorkspaceFormProps) => {
         postNo: formValue.postNo,
         basicAddr: formValue.basicAddr,
         addrDetail: formValue.addrDetail,
+        region: formValue.region,
       };
 
       if (id) {
@@ -125,6 +127,15 @@ const WorkspaceForm = ({ id, initialValues }: IWorkspaceFormProps) => {
             </Form.Item>
             <Form.Item name="addrDetail" rules={[{ required: true, message: "상세 주소를 입력해주세요" }]} className="mt-2">
               <Input placeholder="상세 주소를 입력하세요" />
+            </Form.Item>
+          </FormGroup>
+
+          <FormGroup title="지역">
+            <Form.Item
+              name="region"
+              rules={[{ max: 100, message: "지역은 100자 이하여야 합니다" }]}
+            >
+              <Input placeholder="지역을 입력하세요" />
             </Form.Item>
           </FormGroup>
         </FormSection>

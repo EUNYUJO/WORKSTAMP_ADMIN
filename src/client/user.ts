@@ -11,15 +11,17 @@ export interface IUser {
 }
 
 export interface IApiResponse<T> {
-  code: string;
+  success: boolean;
   message: string;
-  data: T;
+  data: T | null;
+  code: string | null;
 }
 
 export interface IUsersResponse {
-  code: string;
+  success: boolean;
   message: string;
-  data: IUser[];
+  data: IUser[] | null;
+  code: string | null;
 }
 
 export interface IGetUsersParams {

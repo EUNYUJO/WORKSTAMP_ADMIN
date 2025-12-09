@@ -4,7 +4,7 @@ import { IUser, getUsers } from "@/client/user";
 import DefaultTable from "@/components/shared/ui/default-table";
 import DefaultTableBtn from "@/components/shared/ui/default-table-btn";
 import { ISO8601DateTime } from "@/types/common";
-import { Alert, Button, Dropdown, Input, MenuProps, Modal, Popconfirm, Tag, Tabs, message } from "antd";
+import { Alert, Badge, Button, Dropdown, Input, MenuProps, Modal, Popconfirm, Tag, Tabs, message } from "antd";
 import { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import { useRouter } from "next/router";
@@ -23,6 +23,7 @@ const WorkspaceList = () => {
   // 스케줄 관련 상태
   const [scheduleData, setScheduleData] = useState<IPendingSchedulesResponse | null>(null);
   const [workspaceSchedules, setWorkspaceSchedules] = useState<IWorkSchedule[]>([]);
+  const [approvedSchedules, setApprovedSchedules] = useState<IWorkSchedule[]>([]);
   const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
   const [users, setUsers] = useState<IUser[]>([]);
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
@@ -106,6 +107,53 @@ const WorkspaceList = () => {
     }
   }, [messageApi]);
 
+  // 승인된 스케줄 조회
+  const fetchApprovedSchedules = useCallback(async () => {
+    try {
+      setIsLoadingSchedules(true);
+      const allApprovedSchedules: IWorkSchedule[] = [];
+      
+      if (selectedWorkspaceId) {
+        // 특정 워크스페이스의 승인된 스케줄만 조회
+        const response = await getAllSchedulesByWorkspace(selectedWorkspaceId);
+        const approved = (response.data?.data || []).filter(
+          (schedule) => schedule.status === "APPROVED"
+        );
+        allApprovedSchedules.push(...approved);
+      } else {
+        // 모든 워크스페이스의 승인된 스케줄 조회
+        if (data?.data) {
+          for (const workspace of data.data) {
+            try {
+              const response = await getAllSchedulesByWorkspace(workspace.id);
+              const approved = (response.data?.data || []).filter(
+                (schedule) => schedule.status === "APPROVED"
+              );
+              allApprovedSchedules.push(...approved);
+            } catch (err) {
+              console.error(`워크스페이스 ${workspace.id} 스케줄 조회 실패:`, err);
+            }
+          }
+        }
+      }
+      
+      // 연도, 주차, 워크스페이스 순으로 정렬
+      allApprovedSchedules.sort((a, b) => {
+        if (a.year !== b.year) return b.year - a.year;
+        if (a.week !== b.week) return b.week - a.week;
+        return a.workspaceId - b.workspaceId;
+      });
+      
+      setApprovedSchedules(allApprovedSchedules);
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || "승인된 스케줄 목록을 불러오는 중 오류가 발생했습니다.";
+      messageApi.error(errorMessage);
+      setApprovedSchedules([]);
+    } finally {
+      setIsLoadingSchedules(false);
+    }
+  }, [selectedWorkspaceId, data, messageApi]);
+
   // WAVE 타입 표시
   const getWaveTypeTag = (waveType: string) => {
     switch (waveType) {
@@ -174,6 +222,12 @@ const WorkspaceList = () => {
       fetchSchedules();
     }
   }, [fetchWorkspaces, fetchUsers, fetchSchedules, selectedWorkspaceId]);
+
+  useEffect(() => {
+    if (activeTab === "approved" && data?.data) {
+      fetchApprovedSchedules();
+    }
+  }, [activeTab, data, fetchApprovedSchedules]);
 
   const handleDelete = useCallback(
     async (id: number) => {
@@ -308,6 +362,105 @@ const WorkspaceList = () => {
     },
   ];
 
+  // 승인된 스케줄 테이블 컬럼
+  const approvedScheduleColumns: ColumnsType<IWorkSchedule> = [
+    {
+      key: "workspaceId",
+      title: "근무지",
+      dataIndex: "workspaceId",
+      width: 150,
+      render: (workspaceId: number) => {
+        const workspace = data?.data?.find((ws) => ws.id === workspaceId);
+        return workspace?.name || workspaceId.toString();
+      },
+    },
+    {
+      key: "createdBy",
+      title: "신청인",
+      dataIndex: "createdBy",
+      width: 120,
+      render: (userId: number) => getUserName(userId),
+    },
+    {
+      key: "year",
+      title: "연도",
+      dataIndex: "year",
+      width: 80,
+      render: (year: number) => `${year}년`,
+    },
+    {
+      key: "week",
+      title: "주차",
+      dataIndex: "week",
+      width: 80,
+      render: (week: number) => `${week}주차`,
+    },
+    {
+      key: "sundayWave",
+      title: "일",
+      dataIndex: "sundayWave",
+      width: 80,
+      render: (wave: string) => getWaveTypeTag(wave),
+    },
+    {
+      key: "mondayWave",
+      title: "월",
+      dataIndex: "mondayWave",
+      width: 80,
+      render: (wave: string) => getWaveTypeTag(wave),
+    },
+    {
+      key: "tuesdayWave",
+      title: "화",
+      dataIndex: "tuesdayWave",
+      width: 80,
+      render: (wave: string) => getWaveTypeTag(wave),
+    },
+    {
+      key: "wednesdayWave",
+      title: "수",
+      dataIndex: "wednesdayWave",
+      width: 80,
+      render: (wave: string) => getWaveTypeTag(wave),
+    },
+    {
+      key: "thursdayWave",
+      title: "목",
+      dataIndex: "thursdayWave",
+      width: 80,
+      render: (wave: string) => getWaveTypeTag(wave),
+    },
+    {
+      key: "fridayWave",
+      title: "금",
+      dataIndex: "fridayWave",
+      width: 80,
+      render: (wave: string) => getWaveTypeTag(wave),
+    },
+    {
+      key: "saturdayWave",
+      title: "토",
+      dataIndex: "saturdayWave",
+      width: 80,
+      render: (wave: string) => getWaveTypeTag(wave),
+    },
+    {
+      key: "approvedAt",
+      title: "승인일시",
+      dataIndex: "approvedAt",
+      width: 180,
+      render: (date: string | null) =>
+        date ? dayjs(date).format("YYYY-MM-DD HH:mm:ss") : "-",
+    },
+    {
+      key: "createdAt",
+      title: "신청일시",
+      dataIndex: "createdAt",
+      width: 180,
+      render: (date: string) => dayjs(date).format("YYYY-MM-DD HH:mm:ss"),
+    },
+  ];
+
   // 스케줄 테이블 컬럼
   const scheduleColumns: ColumnsType<IWorkSchedule> = [
     {
@@ -423,6 +576,14 @@ const WorkspaceList = () => {
     },
   ];
 
+  // 승인 대기 중인 스케줄 개수 계산
+  const pendingScheduleCount = useMemo(() => {
+    if (selectedWorkspaceId) {
+      return workspaceSchedules.length;
+    }
+    return scheduleData?.data?.totalCount || 0;
+  }, [selectedWorkspaceId, workspaceSchedules.length, scheduleData?.data?.totalCount]);
+
   if (error) {
     return <Alert message="데이터 로딩 중 오류가 발생했습니다." type="warning" />;
   }
@@ -475,7 +636,11 @@ const WorkspaceList = () => {
           },
           {
             key: "schedules",
-            label: "스케줄 승인",
+            label: (
+              <Badge count={pendingScheduleCount} size="small" offset={[10, 0]}>
+                <span>스케줄 승인</span>
+              </Badge>
+            ),
             children: (
               <>
                 {selectedWorkspaceId ? (
@@ -543,6 +708,48 @@ const WorkspaceList = () => {
                     style={{ marginTop: 16 }}
                   />
                 </Modal>
+              </>
+            ),
+          },
+          {
+            key: "approved",
+            label: "승인된 스케줄",
+            children: (
+              <>
+                <div style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <Button
+                    type={selectedWorkspaceId === null ? "primary" : "default"}
+                    onClick={() => {
+                      setSelectedWorkspaceId(null);
+                      fetchApprovedSchedules();
+                    }}
+                  >
+                    전체
+                  </Button>
+                  {data?.data?.map((workspace) => (
+                    <Button
+                      key={workspace.id}
+                      type={selectedWorkspaceId === workspace.id ? "primary" : "default"}
+                      onClick={() => {
+                        setSelectedWorkspaceId(workspace.id);
+                        fetchApprovedSchedules();
+                      }}
+                    >
+                      {workspace.name}
+                    </Button>
+                  ))}
+                </div>
+                <DefaultTable
+                  columns={approvedScheduleColumns}
+                  dataSource={approvedSchedules}
+                  loading={isLoadingSchedules}
+                  rowKey="id"
+                  pagination={{
+                    pageSize: 20,
+                    showSizeChanger: true,
+                    showTotal: (total) => `총 ${total}개`,
+                  }}
+                />
               </>
             ),
           },

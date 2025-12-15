@@ -4,7 +4,7 @@ import { IUser, getUsers } from "@/client/user";
 import DefaultTable from "@/components/shared/ui/default-table";
 import DefaultTableBtn from "@/components/shared/ui/default-table-btn";
 import { ISO8601DateTime } from "@/types/common";
-import { Alert, Badge, Button, Dropdown, Input, MenuProps, Modal, Popconfirm, Tag, Tabs, message } from "antd";
+import { Alert, Badge, Button, Dropdown, Input, MenuProps, Modal, Popconfirm, Select, Tag, Tabs, message } from "antd";
 import { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import { useRouter } from "next/router";
@@ -15,10 +15,14 @@ const { TextArea } = Input;
 const WorkspaceList = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [data, setData] = useState<IAllWorkspacesResponse | null>(null);
+  const [pagedData, setPagedData] = useState<{ totalCount: number; currentPage: number } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
   const router = useRouter();
+  
+  const currentPage = Number(router.query.page || 1);
+  const pageSize = 10;
 
   // 스케줄 관련 상태
   const [scheduleData, setScheduleData] = useState<IPendingSchedulesResponse | null>(null);
@@ -31,21 +35,34 @@ const WorkspaceList = () => {
   const [rejectReason, setRejectReason] = useState("");
   const [activeTab, setActiveTab] = useState("workspaces");
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<number | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<string | undefined>(undefined);
+  const [allWorkspacesForRegion, setAllWorkspacesForRegion] = useState<IWorkspace[]>([]);
 
   const fetchWorkspaces = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await getAllWorkspaces();
-      setData(response.data);
+      const response = await getAllWorkspaces(currentPage, pageSize, selectedRegion);
+      // 페이징 응답 구조: response.data는 IPagedWorkspacesResponse
+      const pagedResponse = response.data;
+      setData({
+        code: pagedResponse.code.toString(),
+        message: pagedResponse.status,
+        data: pagedResponse.data?.resultList || [],
+      });
+      setPagedData({
+        totalCount: pagedResponse.data?.totalCount || 0,
+        currentPage: pagedResponse.data?.currentPage || currentPage,
+      });
     } catch (err: any) {
       setError(err);
-      const errorMessage = err?.response?.data?.message || "근무지 목록을 불러오는 중 오류가 발생했습니다.";
+      const errorMessage = err?.response?.data?.message || err?.response?.data?.status || "근무지 목록을 불러오는 중 오류가 발생했습니다.";
       messageApi.error(errorMessage);
+      setPagedData(null);
     } finally {
       setIsLoading(false);
     }
-  }, [messageApi]);
+  }, [messageApi, currentPage, pageSize, selectedRegion]);
 
   // 사용자 목록 조회
   const fetchUsers = useCallback(async () => {
@@ -215,13 +232,42 @@ const WorkspaceList = () => {
     }
   }, [selectedSchedule, rejectReason, fetchSchedules, fetchSchedulesByWorkspace, selectedWorkspaceId, messageApi]);
 
+  // Region 목록 추출을 위한 모든 근무지 조회
+  const fetchAllWorkspacesForRegion = useCallback(async () => {
+    try {
+      // 큰 사이즈로 한 번에 가져와서 Region 목록 추출
+      const response = await getAllWorkspaces(1, 1000);
+      const pagedResponse = response.data;
+      setAllWorkspacesForRegion(pagedResponse.data?.resultList || []);
+    } catch (err) {
+      console.error("근무지 목록 조회 오류:", err);
+    }
+  }, []);
+
+  // Region 목록 추출
+  const regionList = useMemo(() => {
+    const regions = new Set<string>();
+    allWorkspacesForRegion.forEach((workspace) => {
+      if (workspace.region) {
+        regions.add(workspace.region);
+      }
+    });
+    return Array.from(regions).sort();
+  }, [allWorkspacesForRegion]);
+
   useEffect(() => {
     fetchWorkspaces();
     fetchUsers();
+    fetchAllWorkspacesForRegion();
     if (!selectedWorkspaceId) {
       fetchSchedules();
     }
-  }, [fetchWorkspaces, fetchUsers, fetchSchedules, selectedWorkspaceId]);
+  }, [fetchWorkspaces, fetchUsers, fetchSchedules, fetchAllWorkspacesForRegion, selectedWorkspaceId]);
+
+  // Region 필터 변경 시 목록 다시 불러오기
+  useEffect(() => {
+    fetchWorkspaces();
+  }, [selectedRegion, fetchWorkspaces]);
 
   useEffect(() => {
     if (activeTab === "approved" && data?.data) {
@@ -249,6 +295,18 @@ const WorkspaceList = () => {
       router.push({
         pathname: router.pathname,
         query: { ...router.query, page: pageNumber },
+      });
+    },
+    [router]
+  );
+
+  const handleRegionChange = useCallback(
+    (value: string | undefined) => {
+      setSelectedRegion(value);
+      // 필터 변경 시 첫 페이지로 이동
+      router.push({
+        pathname: router.pathname,
+        query: { ...router.query, page: 1 },
       });
     },
     [router]
@@ -339,7 +397,7 @@ const WorkspaceList = () => {
       },
     },
     {
-      title: "지역",
+      title: "Region",
       dataIndex: "region",
       width: 120,
       render: (value: string | null | undefined) => {
@@ -610,6 +668,19 @@ const WorkspaceList = () => {
                   </div>
 
                   <div className="flex-item-list">
+                    <Select
+                      placeholder="Region 선택"
+                      allowClear
+                      style={{ width: 150, marginRight: 8 }}
+                      value={selectedRegion}
+                      onChange={handleRegionChange}
+                    >
+                      {regionList.map((region) => (
+                        <Select.Option key={region} value={region}>
+                          {region}
+                        </Select.Option>
+                      ))}
+                    </Select>
                     <Button type="primary" onClick={() => router.push("/workplace/new")}>
                       근무지 등록
                     </Button>
@@ -622,14 +693,14 @@ const WorkspaceList = () => {
                   dataSource={data?.data || []}
                   loading={isLoading}
                   pagination={{
-                    current: Number(router.query.page || 1),
-                    defaultPageSize: 10,
-                    total: data?.data?.length || 0,
+                    current: pagedData?.currentPage || currentPage,
+                    defaultPageSize: pageSize,
+                    total: pagedData?.totalCount || 0,
                     showSizeChanger: false,
                     onChange: handleChangePage,
                   }}
                   className="mt-3"
-                  countLabel={data?.data?.length || 0}
+                  countLabel={pagedData?.totalCount || 0}
                 />
               </>
             ),

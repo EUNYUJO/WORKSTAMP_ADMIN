@@ -38,3 +38,72 @@ export const getUsers = (params?: IGetUsersParams) => {
   return fetchApi.get<IUsersResponse>(url);
 };
 
+export interface IDepartureResponse {
+  id: number;
+  departureTime: string;
+  departureLoadCount: number;
+  departureReturnCount: number;
+  memo: string | null;
+  createdAt: string;
+}
+
+export type WaveType = "WAVE1" | "WAVE2" | "OFF";
+
+export interface IAttendanceResponse {
+  attendanceId: number;
+  userId: number;
+  workspaceId: number;
+  workDate: string;
+  entryTime: string | null;
+  breakStartTime: string | null;
+  breakEndTime: string | null;
+  deliveryEndTime: string | null;
+  departures: IDepartureResponse[];
+  status: "PRESENT" | "ABSENT" | "LATE" | "EARLY_LEAVE";
+  memo: string | null;
+  createdAt: string;
+  wave: WaveType | null;
+  discrepancyCount: number | null; // 오차 개수
+  discrepancyReason: string | null; // 오차 사유
+}
+
+export interface IPagedData<T> {
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  resultList: T[];
+}
+
+export interface IPagedResponse<T> {
+  code: number;
+  status: string;
+  data: IPagedData<T>;
+}
+
+export interface IGetUserAttendanceHistoryParams {
+  userId: number;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  size?: number;
+}
+
+export const getUserAttendanceHistory = (params: IGetUserAttendanceHistoryParams) => {
+  const queryParams = new URLSearchParams();
+  if (params.startDate) {
+    queryParams.append("startDate", params.startDate);
+  }
+  if (params.endDate) {
+    queryParams.append("endDate", params.endDate);
+  }
+  if (params.page) {
+    queryParams.append("page", params.page.toString());
+  }
+  if (params.size) {
+    queryParams.append("size", params.size.toString());
+  }
+  const queryString = queryParams.toString();
+  const url = `/api/admin/users/${params.userId}/attendance/history${queryString ? `?${queryString}` : ""}`;
+  return fetchApi.get<IPagedResponse<IAttendanceResponse>>(url);
+};
+

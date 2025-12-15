@@ -54,6 +54,20 @@ const mainMenuData: IMenu[] = [
       },
     ],
   },
+  {
+    id: "affiliation",
+    name: "소속 관리",
+    icon: <Package2 className="w-5 h-5" />,
+    submenu: [
+      {
+        id: "affiliationList",
+        name: "소속 목록",
+        link: {
+          path: "/affiliation/list",
+        },
+      },
+    ],
+  },
 ];
 
 const devMenuData: IMenu[] = [

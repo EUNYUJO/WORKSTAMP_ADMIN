@@ -33,10 +33,13 @@ const ScheduleList = () => {
     // 근무지 목록 조회
     const fetchWorkspaces = useCallback(async () => {
         try {
-            const response = await getAllWorkspaces();
-            setWorkspaces(response.data.data || []);
+            // 페이징 없이 모든 근무지 가져오기 (큰 사이즈로)
+            const response = await getAllWorkspaces(1, 1000);
+            const pagedResponse = response.data;
+            setWorkspaces(pagedResponse.data?.resultList || []);
         } catch (err) {
             console.error("근무지 목록 조회 실패:", err);
+            setWorkspaces([]);
         }
     }, []);
 

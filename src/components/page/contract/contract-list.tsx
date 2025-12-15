@@ -1,9 +1,9 @@
 import { IAllContractsResponse, IContract, getAllContracts, deleteContract } from "@/client/contract";
-import { IAffiliation, getAllAffiliations } from "@/client/affiliation";
+import { IAffiliation, getAllAffiliations, createAffiliation, ICreateAffiliationRequest } from "@/client/affiliation";
 import DefaultTable from "@/components/shared/ui/default-table";
 import DefaultTableBtn from "@/components/shared/ui/default-table-btn";
 import { ISO8601DateTime } from "@/types/common";
-import { Alert, Button, Dropdown, MenuProps, Popconfirm, message } from "antd";
+import { Alert, Button, Dropdown, MenuProps, Popconfirm, message, Modal, Form, Input } from "antd";
 import { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import { useRouter } from "next/router";
@@ -16,6 +16,9 @@ const ContractList = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
+  const [isAffiliationModalOpen, setIsAffiliationModalOpen] = useState(false);
+  const [affiliationForm] = Form.useForm<ICreateAffiliationRequest>();
+  const [isCreatingAffiliation, setIsCreatingAffiliation] = useState(false);
   const router = useRouter();
 
   const currentPage = Number(router.query.page || 1);
@@ -84,6 +87,23 @@ const ContractList = () => {
     },
     [router]
   );
+
+  const handleCreateAffiliation = useCallback(async (values: ICreateAffiliationRequest) => {
+    try {
+      setIsCreatingAffiliation(true);
+      await createAffiliation(values);
+      messageApi.success("소속이 등록되었습니다.");
+      setIsAffiliationModalOpen(false);
+      affiliationForm.resetFields();
+      // 소속 목록 다시 불러오기
+      await fetchAffiliations();
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || "소속 등록 중 오류가 발생했습니다.";
+      messageApi.error(errorMessage);
+    } finally {
+      setIsCreatingAffiliation(false);
+    }
+  }, [messageApi, affiliationForm, fetchAffiliations]);
 
   const onSelectChange = useCallback((newSelectedRowKeys: React.Key[]) => {
     setSelectedRowKeys(newSelectedRowKeys);
@@ -224,6 +244,9 @@ const ContractList = () => {
         </div>
 
         <div className="flex-item-list">
+          <Button onClick={() => setIsAffiliationModalOpen(true)}>
+            소속 등록
+          </Button>
           <Button type="primary" onClick={() => router.push("/contract/new")}>
             계약서 등록
           </Button>
@@ -245,6 +268,74 @@ const ContractList = () => {
         className="mt-3"
         countLabel={data?.data?.totalCount || 0}
       />
+
+      <Modal
+        title="소속 등록"
+        open={isAffiliationModalOpen}
+        onCancel={() => {
+          setIsAffiliationModalOpen(false);
+          affiliationForm.resetFields();
+        }}
+        footer={null}
+        width={600}
+      >
+        <Form
+          form={affiliationForm}
+          layout="vertical"
+          onFinish={handleCreateAffiliation}
+        >
+          <Form.Item
+            label="소속 번호"
+            name="code"
+            rules={[
+              { required: true, message: "소속 번호를 입력해주세요" },
+              { pattern: /^[0-9]{6}$/, message: "소속 번호는 6자리 숫자여야 합니다" },
+            ]}
+          >
+            <Input placeholder="소속 번호를 입력하세요 (6자리 숫자)" maxLength={6} />
+          </Form.Item>
+
+          <Form.Item
+            label="소속 이름"
+            name="name"
+            rules={[
+              { required: true, message: "소속 이름을 입력해주세요" },
+              { max: 200, message: "소속 이름은 200자 이하여야 합니다" },
+            ]}
+          >
+            <Input placeholder="소속 이름을 입력하세요" maxLength={200} />
+          </Form.Item>
+
+          <Form.Item
+            label="설명"
+            name="description"
+            rules={[
+              { max: 500, message: "설명은 500자 이하여야 합니다" },
+            ]}
+          >
+            <Input.TextArea 
+              placeholder="소속 설명을 입력하세요 (선택사항)" 
+              rows={4}
+              maxLength={500}
+            />
+          </Form.Item>
+
+          <Form.Item className="text-right mb-0">
+            <Button 
+              onClick={() => {
+                setIsAffiliationModalOpen(false);
+                affiliationForm.resetFields();
+              }}
+              style={{ marginRight: 8 }}
+            >
+              취소
+            </Button>
+            <Button type="primary" htmlType="submit" loading={isCreatingAffiliation}>
+              등록
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
     </>
   );
 };

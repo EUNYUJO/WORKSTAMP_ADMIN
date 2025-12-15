@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
 import { getSession } from "next-auth/react";
 
-const API_ENDPOINT = process.env.NEXT_PUBLIC_API_ENDPOINT || "http://43.203.137.231:8081";
+const API_ENDPOINT = process.env.NEXT_PUBLIC_API_ENDPOINT || "http://3.39.247.194:8081";
 
 export const fetcher = async (input: URL | RequestInfo, init?: AxiosRequestConfig | undefined) => {
   const url = typeof input === "string" ? input : input.toString();

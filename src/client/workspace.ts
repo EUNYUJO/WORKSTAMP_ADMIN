@@ -37,6 +37,19 @@ export interface IApiResponse<T> {
   data: T;
 }
 
+export interface IWorkspacesPaginationData {
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  resultList: IWorkspace[];
+}
+
+export interface IPagedWorkspacesResponse {
+  code: number;
+  status: string;
+  data: IWorkspacesPaginationData;
+}
+
 export interface IAllWorkspacesResponse {
   code: string;
   message: string;
@@ -53,8 +66,10 @@ export const createWorkspace = (value: ICreateWorkspaceRequest) => {
   return fetchApi.post<IApiResponse<IWorkspace>>(`/api/admin/workspaces`, value);
 };
 
-export const getAllWorkspaces = () => {
-  return fetchApi.get<IAllWorkspacesResponse>(`/api/admin/workspaces`);
+export const getAllWorkspaces = (page: number = 1, size: number = 10, region?: string) => {
+  return fetchApi.get<IPagedWorkspacesResponse>(`/api/admin/workspaces`, {
+    params: { page, size, ...(region && { region }) },
+  });
 };
 
 export const getWorkspace = (id: number) => {

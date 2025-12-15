@@ -1,9 +1,9 @@
-import { IUser, IUsersResponse, getUsers } from "@/client/user";
+import { IUser, IUsersResponse, getUsers, getUserAttendanceHistory, IAttendanceResponse } from "@/client/user";
 import { IAffiliation, getAllAffiliations } from "@/client/affiliation";
 import DefaultTable from "@/components/shared/ui/default-table";
 import DefaultTableBtn from "@/components/shared/ui/default-table-btn";
 import { ISO8601DateTime } from "@/types/common";
-import { Alert, Button, Dropdown, MenuProps, message, Select } from "antd";
+import { Alert, Button, Dropdown, MenuProps, message, Modal, Select, Table } from "antd";
 import { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import { useRouter } from "next/router";
@@ -20,14 +20,26 @@ const UserList = () => {
   const [error, setError] = useState<Error | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
   const router = useRouter();
+  
+  // 근무 이력 모달 관련 상태
+  const [attendanceModalVisible, setAttendanceModalVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<IUser | null>(null);
+  const [attendanceHistory, setAttendanceHistory] = useState<IAttendanceResponse[]>([]);
+  const [isLoadingAttendance, setIsLoadingAttendance] = useState(false);
+  const [attendancePage, setAttendancePage] = useState(1);
+  const [attendancePageSize] = useState(10);
+  const [attendanceTotal, setAttendanceTotal] = useState(0);
 
   // 근무지 목록 가져오기
   const fetchWorkspaces = useCallback(async () => {
     try {
-      const response = await getAllWorkspaces();
-      setWorkspaces(response.data.data || []);
+      // 페이징 없이 모든 근무지 가져오기 (큰 사이즈로)
+      const response = await getAllWorkspaces(1, 1000);
+      const pagedResponse = response.data;
+      setWorkspaces(pagedResponse.data?.resultList || []);
     } catch (err) {
       console.error("근무지 목록 조회 오류:", err);
+      setWorkspaces([]);
     }
   }, []);
 
@@ -99,6 +111,62 @@ const UserList = () => {
     []
   );
 
+  // 근무 이력 조회
+  const fetchAttendanceHistory = useCallback(
+    async (userId: number, page: number = 1) => {
+      try {
+        setIsLoadingAttendance(true);
+        const response = await getUserAttendanceHistory({ 
+          userId, 
+          page, 
+          size: attendancePageSize 
+        });
+        const pagedData = response.data.data;
+        setAttendanceHistory(pagedData?.resultList || []);
+        setAttendanceTotal(pagedData?.totalCount || 0);
+        setAttendancePage(page);
+      } catch (err: any) {
+        const errorMessage = err?.response?.data?.message || "근무 이력을 불러오는 중 오류가 발생했습니다.";
+        messageApi.error(errorMessage);
+        setAttendanceHistory([]);
+        setAttendanceTotal(0);
+      } finally {
+        setIsLoadingAttendance(false);
+      }
+    },
+    [messageApi, attendancePageSize]
+  );
+
+  // 이름 클릭 핸들러
+  const handleNameClick = useCallback(
+    (user: IUser) => {
+      setSelectedUser(user);
+      setAttendanceModalVisible(true);
+      setAttendancePage(1);
+      fetchAttendanceHistory(user.id, 1);
+    },
+    [fetchAttendanceHistory]
+  );
+
+  // 모달 닫기
+  const handleModalClose = useCallback(() => {
+    setAttendanceModalVisible(false);
+    setSelectedUser(null);
+    setAttendanceHistory([]);
+    setAttendancePage(1);
+    setAttendanceTotal(0);
+  }, []);
+
+  // 근무 이력 페이지 변경
+  const handleAttendancePageChange = useCallback(
+    (page: number) => {
+      if (selectedUser) {
+        fetchAttendanceHistory(selectedUser.id, page);
+      }
+    },
+    [selectedUser, fetchAttendanceHistory]
+  );
+
   const modifyDropdownItems: MenuProps["items"] = useMemo(
     () => [
       {
@@ -120,6 +188,16 @@ const UserList = () => {
       title: "이름",
       dataIndex: "name",
       width: 150,
+      render: (name: string, record: IUser) => {
+        return (
+          <a
+            onClick={() => handleNameClick(record)}
+            style={{ cursor: "pointer", color: "#1890ff" }}
+          >
+            {name}
+          </a>
+        );
+      },
     },
     {
       title: "사용자명",
@@ -186,7 +264,7 @@ const UserList = () => {
             value={selectedWorkspaceId}
             onChange={handleWorkspaceChange}
           >
-            {workspaces.map((workspace) => (
+            {(workspaces || []).map((workspace) => (
               <Select.Option key={workspace.id} value={workspace.id}>
                 {workspace.name}
               </Select.Option>
@@ -210,6 +288,128 @@ const UserList = () => {
         className="mt-3"
         countLabel={data?.data?.length || 0}
       />
+
+      <Modal
+        title={`${selectedUser?.name || ""} 근무 이력`}
+        open={attendanceModalVisible}
+        onCancel={handleModalClose}
+        footer={[
+          <Button key="close" onClick={handleModalClose}>
+            닫기
+          </Button>,
+        ]}
+        width={1200}
+      >
+        <Table<IAttendanceResponse>
+          columns={[
+            {
+              title: "근무일",
+              dataIndex: "workDate",
+              width: 120,
+              render: (value: string) => dayjs(value).format("YYYY-MM-DD"),
+            },
+            {
+              title: "근무지",
+              dataIndex: "workspaceId",
+              width: 150,
+              render: (workspaceId: number) => {
+                const workspace = workspaces.find((w) => w.id === workspaceId);
+                return workspace?.name || workspaceId;
+              },
+            },
+            {
+              title: "입차 시간",
+              dataIndex: "entryTime",
+              width: 150,
+              render: (value: string | null) => (value ? dayjs(value).format("YYYY-MM-DD HH:mm") : "-"),
+            },
+            {
+              title: "Wave",
+              dataIndex: "wave",
+              width: 100,
+              align: "center",
+              render: (wave: string | null) => {
+                if (!wave) return "-";
+                const waveMap: Record<string, string> = {
+                  WAVE1: "야간",
+                  WAVE2: "주간",
+                  OFF: "휴무",
+                };
+                return waveMap[wave] || wave;
+              },
+            },
+            {
+              title: "휴식 시작",
+              dataIndex: "breakStartTime",
+              width: 150,
+              render: (value: string | null) => (value ? dayjs(value).format("HH:mm") : "-"),
+            },
+            {
+              title: "휴식 종료",
+              dataIndex: "breakEndTime",
+              width: 150,
+              render: (value: string | null) => (value ? dayjs(value).format("HH:mm") : "-"),
+            },
+            {
+              title: "배송 종료",
+              dataIndex: "deliveryEndTime",
+              width: 150,
+              render: (value: string | null) => (value ? dayjs(value).format("YYYY-MM-DD HH:mm") : "-"),
+            },
+            {
+              title: "출차 횟수",
+              dataIndex: "departures",
+              width: 100,
+              align: "center",
+              render: (departures: any[]) => departures?.length || 0,
+            },
+            {
+              title: "상태",
+              dataIndex: "status",
+              width: 100,
+              align: "center",
+              render: (status: string) => {
+                const statusMap: Record<string, string> = {
+                  PRESENT: "출근",
+                  ABSENT: "결근",
+                  LATE: "지각",
+                  EARLY_LEAVE: "조퇴",
+                };
+                return statusMap[status] || status;
+              },
+            },
+            {
+              title: "오차 개수",
+              dataIndex: "discrepancyCount",
+              width: 100,
+              align: "center",
+              render: (value: number | null) => value !== null ? value : "-",
+            },
+            {
+              title: "오차 메모",
+              dataIndex: "discrepancyReason",
+              width: 200,
+              render: (value: string | null) => value || "-",
+            },
+            {
+              title: "메모",
+              dataIndex: "memo",
+              render: (value: string | null) => value || "-",
+            },
+          ]}
+          dataSource={attendanceHistory}
+          loading={isLoadingAttendance}
+          rowKey="attendanceId"
+          pagination={{
+            current: attendancePage,
+            pageSize: attendancePageSize,
+            total: attendanceTotal,
+            showSizeChanger: false,
+            onChange: handleAttendancePageChange,
+          }}
+          scroll={{ x: 1000 }}
+        />
+      </Modal>
     </>
   );
 };

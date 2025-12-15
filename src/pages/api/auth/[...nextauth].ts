@@ -20,7 +20,7 @@ const credentialsProviderOption: CredentialsConfig<{}> = {
     }
 
     try {
-      const API_ENDPOINT = process.env.NEXT_PUBLIC_API_ENDPOINT || "http://43.203.137.231:8081";
+      const API_ENDPOINT = process.env.NEXT_PUBLIC_API_ENDPOINT || "http://3.39.247.194:8081";
       const plainPassword = credentials.password as string;
       const encryptedPassword = encryptPassword(plainPassword);
 

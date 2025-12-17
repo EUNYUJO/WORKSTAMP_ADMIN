@@ -1,4 +1,4 @@
-import { IUser, IUsersResponse, getUsers, getUserAttendanceHistory, IAttendanceResponse } from "@/client/user";
+import { IUser, IUsersResponse, getUsers, getUserAttendanceHistory, IAttendanceResponse, exportAttendanceHistory } from "@/client/user";
 import { IAffiliation, getAllAffiliations } from "@/client/affiliation";
 import DefaultTable from "@/components/shared/ui/default-table";
 import DefaultTableBtn from "@/components/shared/ui/default-table-btn";
@@ -20,7 +20,7 @@ const UserList = () => {
   const [error, setError] = useState<Error | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
   const router = useRouter();
-  
+
   // 근무 이력 모달 관련 상태
   const [attendanceModalVisible, setAttendanceModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState<IUser | null>(null);
@@ -116,10 +116,10 @@ const UserList = () => {
     async (userId: number, page: number = 1) => {
       try {
         setIsLoadingAttendance(true);
-        const response = await getUserAttendanceHistory({ 
-          userId, 
-          page, 
-          size: attendancePageSize 
+        const response = await getUserAttendanceHistory({
+          userId,
+          page,
+          size: attendancePageSize
         });
         const pagedData = response.data.data;
         setAttendanceHistory(pagedData?.resultList || []);
@@ -166,6 +166,60 @@ const UserList = () => {
     },
     [selectedUser, fetchAttendanceHistory]
   );
+
+  // 엑셀 다운로드 (개별 사용자)
+  const handleExportExcel = useCallback(async () => {
+    try {
+      messageApi.loading({ content: "엑셀 파일을 생성하는 중...", key: "export" });
+
+      const blob = await exportAttendanceHistory({
+        userId: selectedUser?.id,
+        workspaceId: selectedWorkspaceId,
+      });
+
+      // Blob을 다운로드 링크로 변환
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `근무이력_${selectedUser?.name || "전체"}_${dayjs().format("YYYYMMDD_HHmmss")}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      messageApi.success({ content: "엑셀 파일이 다운로드되었습니다.", key: "export" });
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || "엑셀 파일 다운로드 중 오류가 발생했습니다.";
+      messageApi.error({ content: errorMessage, key: "export" });
+    }
+  }, [selectedUser, selectedWorkspaceId, messageApi]);
+
+  // 전체 엑셀 다운로드
+  const handleExportAllExcel = useCallback(async () => {
+    try {
+      messageApi.loading({ content: "엑셀 파일을 생성하는 중...", key: "exportAll" });
+
+      const blob = await exportAttendanceHistory({
+        workspaceId: selectedWorkspaceId,
+      });
+
+      // Blob을 다운로드 링크로 변환
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement("a");
+      link.href = url;
+      const workspaceName = workspaces.find(w => w.id === selectedWorkspaceId)?.name || "전체";
+      link.setAttribute("download", `근무이력_${workspaceName}_${dayjs().format("YYYYMMDD_HHmmss")}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      messageApi.success({ content: "엑셀 파일이 다운로드되었습니다.", key: "exportAll" });
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || "엑셀 파일 다운로드 중 오류가 발생했습니다.";
+      messageApi.error({ content: errorMessage, key: "exportAll" });
+    }
+  }, [selectedWorkspaceId, workspaces, messageApi]);
 
   const modifyDropdownItems: MenuProps["items"] = useMemo(
     () => [
@@ -270,6 +324,7 @@ const UserList = () => {
               </Select.Option>
             ))}
           </Select>
+
         </div>
       </DefaultTableBtn>
 
@@ -294,6 +349,9 @@ const UserList = () => {
         open={attendanceModalVisible}
         onCancel={handleModalClose}
         footer={[
+          <Button key="export" type="primary" onClick={handleExportExcel}>
+            엑셀 다운로드
+          </Button>,
           <Button key="close" onClick={handleModalClose}>
             닫기
           </Button>,

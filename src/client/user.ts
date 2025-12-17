@@ -1,4 +1,8 @@
 import { fetchApi } from "./base";
+import axios from "axios";
+import { getSession } from "next-auth/react";
+
+const API_ENDPOINT = process.env.NEXT_PUBLIC_API_ENDPOINT || "http://3.39.247.194";
 
 export interface IUser {
   id: number;
@@ -105,5 +109,41 @@ export const getUserAttendanceHistory = (params: IGetUserAttendanceHistoryParams
   const queryString = queryParams.toString();
   const url = `/api/admin/users/${params.userId}/attendance/history${queryString ? `?${queryString}` : ""}`;
   return fetchApi.get<IPagedResponse<IAttendanceResponse>>(url);
+};
+
+export interface IExportAttendanceHistoryParams {
+  userId?: number;
+  workspaceId?: number;
+  startDate?: string;
+  endDate?: string;
+}
+
+export const exportAttendanceHistory = async (params?: IExportAttendanceHistoryParams) => {
+  const queryParams = new URLSearchParams();
+  if (params?.userId) {
+    queryParams.append("userId", params.userId.toString());
+  }
+  if (params?.workspaceId) {
+    queryParams.append("workspaceId", params.workspaceId.toString());
+  }
+  if (params?.startDate) {
+    queryParams.append("startDate", params.startDate);
+  }
+  if (params?.endDate) {
+    queryParams.append("endDate", params.endDate);
+  }
+  const queryString = queryParams.toString();
+  const url = `${API_ENDPOINT}/api/admin/attendance/export${queryString ? `?${queryString}` : ""}`;
+  
+  const session = await getSession();
+  const response = await axios.get(url, {
+    responseType: "blob",
+    headers: {
+      ...(session?.accessToken && { Authorization: `Bearer ${session.accessToken}` }),
+    },
+    withCredentials: true,
+  });
+  
+  return response.data;
 };
 

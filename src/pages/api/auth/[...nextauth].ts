@@ -20,7 +20,7 @@ const credentialsProviderOption: CredentialsConfig<{}> = {
     }
 
     try {
-      const API_ENDPOINT = process.env.NEXT_PUBLIC_API_ENDPOINT || "http://3.39.247.194:8081";
+      const API_ENDPOINT = process.env.NEXT_PUBLIC_API_ENDPOINT || "http://3.39.247.194";
       const plainPassword = credentials.password as string;
       const encryptedPassword = encryptPassword(plainPassword);
 
@@ -43,7 +43,7 @@ const credentialsProviderOption: CredentialsConfig<{}> = {
         password: encryptedPassword,
       };
 
-      const loginUrl = `${API_ENDPOINT}/api/auth/login`;
+      const loginUrl = `${API_ENDPOINT}/api/v1/auth/login`;
       console.log("Request URL:", loginUrl);
       console.log("Request body:", { ...requestBody, password: encryptedPassword.substring(0, 30) + "..." });
 

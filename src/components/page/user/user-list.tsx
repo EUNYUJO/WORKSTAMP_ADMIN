@@ -331,8 +331,8 @@ const UserList = () => {
               render: (wave: string | null) => {
                 if (!wave) return "-";
                 const waveMap: Record<string, string> = {
-                  WAVE1: "야간",
-                  WAVE2: "주간",
+                  WAVE1: "Wave1(야간)",
+                  WAVE2: "Wave2(주간)",
                   OFF: "휴무",
                 };
                 return waveMap[wave] || wave;

@@ -236,10 +236,6 @@ const ContractList = () => {
       {contextHolder}
       <DefaultTableBtn className="justify-between">
         <div>
-          <Dropdown disabled={!hasSelected} menu={{ items: modifyDropdownItems }} trigger={["click"]}>
-            <Button>일괄수정</Button>
-          </Dropdown>
-
           <span style={{ marginLeft: 8 }}>{hasSelected ? `${selectedRowKeys.length}건 선택` : ""}</span>
         </div>
 
@@ -313,15 +309,15 @@ const ContractList = () => {
               { max: 500, message: "설명은 500자 이하여야 합니다" },
             ]}
           >
-            <Input.TextArea 
-              placeholder="소속 설명을 입력하세요 (선택사항)" 
+            <Input.TextArea
+              placeholder="소속 설명을 입력하세요 (선택사항)"
               rows={4}
               maxLength={500}
             />
           </Form.Item>
 
           <Form.Item className="text-right mb-0">
-            <Button 
+            <Button
               onClick={() => {
                 setIsAffiliationModalOpen(false);
                 affiliationForm.resetFields();

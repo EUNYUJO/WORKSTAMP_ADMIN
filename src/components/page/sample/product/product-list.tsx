@@ -140,10 +140,6 @@ const ProductList = () => {
     <>
       <DefaultTableBtn className="justify-between">
         <div>
-          <Dropdown disabled={!hasSelected} menu={{ items: modifyDropdownItems }} trigger={["click"]}>
-            <Button>일괄수정</Button>
-          </Dropdown>
-
           <span style={{ marginLeft: 8 }}>{hasSelected ? `${selectedRowKeys.length}건 선택` : ""}</span>
         </div>
 

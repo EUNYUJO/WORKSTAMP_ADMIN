@@ -20,7 +20,7 @@ const WorkspaceList = () => {
   const [error, setError] = useState<Error | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
   const router = useRouter();
-  
+
   const currentPage = Number(router.query.page || 1);
   const pageSize = 10;
 
@@ -129,7 +129,7 @@ const WorkspaceList = () => {
     try {
       setIsLoadingSchedules(true);
       const allApprovedSchedules: IWorkSchedule[] = [];
-      
+
       if (selectedWorkspaceId) {
         // 특정 워크스페이스의 승인된 스케줄만 조회
         const response = await getAllSchedulesByWorkspace(selectedWorkspaceId);
@@ -153,14 +153,14 @@ const WorkspaceList = () => {
           }
         }
       }
-      
+
       // 연도, 주차, 워크스페이스 순으로 정렬
       allApprovedSchedules.sort((a, b) => {
         if (a.year !== b.year) return b.year - a.year;
         if (a.week !== b.week) return b.week - a.week;
         return a.workspaceId - b.workspaceId;
       });
-      
+
       setApprovedSchedules(allApprovedSchedules);
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || "승인된 스케줄 목록을 불러오는 중 오류가 발생했습니다.";
@@ -660,9 +660,7 @@ const WorkspaceList = () => {
               <>
                 <DefaultTableBtn className="justify-between">
                   <div>
-                    <Dropdown disabled={!hasSelected} menu={{ items: modifyDropdownItems }} trigger={["click"]}>
-                      <Button>일괄수정</Button>
-                    </Dropdown>
+
 
                     <span style={{ marginLeft: 8 }}>{hasSelected ? `${selectedRowKeys.length}건 선택` : ""}</span>
                   </div>

@@ -364,17 +364,36 @@ switch() {
     echo $new_port > $CURRENT_PORT_FILE
     
     # Nginx 업스트림 설정 업데이트 (nginx가 설치되어 있는 경우)
-    if command -v nginx > /dev/null 2>&1; then
+    if command -v nginx > /dev/null 2>&1 || command -v sudo > /dev/null 2>&1; then
+        echo "🔄 Nginx 업스트림 설정 업데이트 중... (포트: $new_port)"
+        
+        # workstamp-admin.conf 파일 직접 업데이트
+        NGINX_CONF_FILE="/etc/nginx/conf.d/workstamp-admin.conf"
+        if [ -f "$NGINX_CONF_FILE" ]; then
+            # upstream workstamp_admin 블록의 포트 업데이트
+            sudo sed -i "s/server localhost:300[01];/server localhost:${new_port};/g" "$NGINX_CONF_FILE"
+            echo "✅ Nginx 설정 파일 업데이트 완료: $NGINX_CONF_FILE"
+        fi
+        
+        # update-nginx-upstream.sh 스크립트도 실행 (있는 경우)
         if [ -f "${APP_DIR}/update-nginx-upstream.sh" ]; then
-            echo "🔄 Nginx 설정 업데이트 중..."
-            DEPLOY_APP_DIR="${APP_DIR}" bash "${APP_DIR}/update-nginx-upstream.sh"
+            DEPLOY_APP_DIR="${APP_DIR}" bash "${APP_DIR}/update-nginx-upstream.sh" || true
+        fi
+        
+        # Nginx 설정 테스트 및 재로드
+        if sudo nginx -t > /dev/null 2>&1; then
+            if sudo systemctl reload nginx > /dev/null 2>&1; then
+                echo "✅ Nginx 재로드 완료"
+            else
+                echo "⚠️  경고: Nginx 재로드 실패. 수동으로 재로드해주세요: sudo systemctl reload nginx"
+            fi
         else
-            echo "⚠️  경고: update-nginx-upstream.sh 스크립트를 찾을 수 없습니다."
-            echo "   Nginx 설정을 수동으로 업데이트해주세요."
+            echo "⚠️  경고: Nginx 설정 검증 실패"
+            sudo nginx -t || true
         fi
     else
-        echo "⚠️  경고: Nginx가 설치되어 있지 않습니다."
-        echo "   블루-그린 배포를 사용하려면 Nginx를 설치하고 설정해주세요."
+        echo "⚠️  경고: Nginx가 설치되어 있지 않거나 sudo 권한이 없습니다."
+        echo "   Nginx 설정을 수동으로 업데이트해주세요."
     fi
     
     echo "✅ 전환 완료! 현재 포트: $new_port"

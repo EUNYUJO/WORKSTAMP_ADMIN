@@ -12,6 +12,9 @@ export interface IUser {
   affiliationId: number;
   role: string;
   createdAt: string;
+  status?: string; // PENDING, APPROVED, REJECTED
+  phoneNumberHash?: string; // 검색용
+  phoneNumber?: string; // 복호화된 전화번호
 }
 
 export interface IApiResponse<T> {
@@ -40,6 +43,34 @@ export const getUsers = (params?: IGetUsersParams) => {
   const queryString = queryParams.toString();
   const url = `/api/admin/users${queryString ? `?${queryString}` : ""}`;
   return fetchApi.get<IUsersResponse>(url);
+};
+
+export interface IGetPendingUsersParams {
+  name?: string;
+  phoneNumberHash?: string;
+}
+
+export const getPendingUsers = (params?: IGetPendingUsersParams) => {
+  const queryParams = new URLSearchParams();
+  if (params?.name) {
+    queryParams.append("name", params.name);
+  }
+  if (params?.phoneNumberHash) {
+    queryParams.append("phoneNumberHash", params.phoneNumberHash);
+  }
+  const queryString = queryParams.toString();
+  const url = `/api/admin/users/pending${queryString ? `?${queryString}` : ""}`;
+  return fetchApi.get<IUsersResponse>(url);
+};
+
+export const approveUser = (userId: number) => {
+  const url = `/api/admin/users/${userId}/approve`;
+  return fetchApi.post<IUsersResponse>(url);
+};
+
+export const rejectUser = (userId: number, reason?: string) => {
+  const url = `/api/admin/users/${userId}/reject`;
+  return fetchApi.post<IUsersResponse>(url, { reason });
 };
 
 export interface IDepartureResponse {

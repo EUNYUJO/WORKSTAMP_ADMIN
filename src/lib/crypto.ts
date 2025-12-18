@@ -80,3 +80,15 @@ export const encryptPassword = (password: string): string => {
   return encryptAES(password);
 };
 
+/**
+ * HMAC-SHA256 해시 생성
+ * 백엔드와 동일한 키를 사용해야 합니다.
+ * @param data 해시할 데이터
+ * @param key HMAC 키 (기본값: CRYPTO_AES_KEY)
+ * @returns Hex 문자열로 변환된 해시값
+ */
+export function hmacSha256Hex(data: string, key: string = CRYPTO_AES_KEY): string {
+  const hash = CryptoJS.HmacSHA256(data, key);
+  return hash.toString(CryptoJS.enc.Hex);
+}
+

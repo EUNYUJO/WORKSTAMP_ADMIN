@@ -211,18 +211,6 @@ if [ -f "scripts/update-nginx-upstream.sh" ]; then
     scp -i ${SSH_KEY} scripts/update-nginx-upstream.sh ${SERVER_USER}@${SERVER_HOST}:${APP_DIR}/
 fi
 
-if [ -f "scripts/setup-nginx-combined.sh" ]; then
-    echo "📤 통합 Nginx 설정 스크립트 전송 중..."
-    scp -i ${SSH_KEY} scripts/setup-nginx-combined.sh ${SERVER_USER}@${SERVER_HOST}:${APP_DIR}/
-    ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} "chmod +x ${APP_DIR}/setup-nginx-combined.sh"
-fi
-
-if [ -f "scripts/fix-static-files.sh" ]; then
-    echo "📤 정적 파일 진단 스크립트 전송 중..."
-    scp -i ${SSH_KEY} scripts/fix-static-files.sh ${SERVER_USER}@${SERVER_HOST}:${APP_DIR}/scripts/
-    ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} "chmod +x ${APP_DIR}/scripts/fix-static-files.sh"
-fi
-
 # 10. 실행 권한 부여
 echo "🔐 실행 권한 부여 중..."
 ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} "chmod +x ${APP_DIR}/run.sh"
@@ -230,55 +218,9 @@ if [ -f "scripts/update-nginx-upstream.sh" ]; then
     ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} "chmod +x ${APP_DIR}/update-nginx-upstream.sh"
 fi
 
-# 11. 파일 권한 수정 (403 에러 방지)
-echo "🔧 정적 파일 권한 수정 중..."
-ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} << EOF
-    cd ${APP_DIR}
-    
-    # 상위 디렉토리 권한 확인 (nginx 접근을 위해)
-    if [ -d ".next" ]; then
-        chmod 755 .next 2>/dev/null || true
-    fi
-    
-    # .next/static 디렉토리 권한 설정
-    if [ -d ".next/static" ]; then
-        # 디렉토리 권한: 755
-        find .next/static -type d -exec chmod 755 {} \; 2>/dev/null || true
-        # 파일 권한: 644
-        find .next/static -type f -exec chmod 644 {} \; 2>/dev/null || true
-        # 최상위 디렉토리 권한 확인
-        chmod 755 .next/static 2>/dev/null || true
-        echo "✅ .next/static 권한 설정 완료"
-    fi
-    
-    # public 디렉토리 권한 설정
-    if [ -d "public" ]; then
-        # 디렉토리 권한: 755
-        find public -type d -exec chmod 755 {} \; 2>/dev/null || true
-        # 파일 권한: 644
-        find public -type f -exec chmod 644 {} \; 2>/dev/null || true
-        # 최상위 디렉토리 권한 확인
-        chmod 755 public 2>/dev/null || true
-        echo "✅ public 권한 설정 완료"
-    fi
-EOF
 
-# 12. 통합 Nginx 설정 (백엔드와 함께 사용하는 경우)
-if [ -f "scripts/setup-nginx-combined.sh" ]; then
-    echo "🔧 통합 Nginx 설정 적용 중..."
-    ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} << EOF
-        cd ${APP_DIR}
-        if [ -f "./setup-nginx-combined.sh" ]; then
-            export DEPLOY_APP_DIR=${APP_DIR}
-            export API_APP_DIR=\${API_APP_DIR:-/home/ec2-user/WORKSTAMP_API}
-            bash ./setup-nginx-combined.sh
-        else
-            echo "⚠️  setup-nginx-combined.sh를 찾을 수 없습니다."
-        fi
-EOF
-fi
 
-# 13. 무중단 배포 (블루-그린)
+# 11. 무중단 배포 (블루-그린)
 echo "🔄 무중단 배포 시작..."
 echo "📊 현재 상태 확인 중..."
 ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} "cd ${APP_DIR} && DEPLOY_APP_NAME=${APP_NAME} DEPLOY_APP_DIR=${APP_DIR} ./run.sh status"
@@ -295,57 +237,10 @@ if ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} "cd ${APP_DIR} && DEPLOY_APP_
     echo "📊 최종 상태:"
     ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} "cd ${APP_DIR} && DEPLOY_APP_NAME=${APP_NAME} DEPLOY_APP_DIR=${APP_DIR} ./run.sh status"
     
-    # 통합 Nginx 설정 업데이트 (포트 변경 반영)
-    if [ -f "scripts/setup-nginx-combined.sh" ]; then
-        echo "🔄 통합 Nginx 설정 업데이트 중 (포트 변경 반영)..."
-        ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} << EOF
-            cd ${APP_DIR}
-            export DEPLOY_APP_DIR=${APP_DIR}
-            export API_APP_DIR=\${API_APP_DIR:-/home/ec2-user/WORKSTAMP_API}
-            bash ./setup-nginx-combined.sh
-EOF
-    fi
-    
-    # 파일 권한 최종 확인 및 정적 파일 진단
-    echo "🔧 파일 권한 최종 확인 및 정적 파일 진단 중..."
-    ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} << EOF
-        cd ${APP_DIR}
-        
-        # 상위 디렉토리 권한 확인 (nginx 접근을 위해)
-        if [ -d ".next" ]; then
-            chmod 755 .next 2>/dev/null || true
-        fi
-        
-        # 권한 수정
-        if [ -d ".next/static" ]; then
-            # 디렉토리 권한: 755
-            find .next/static -type d -exec chmod 755 {} \; 2>/dev/null || true
-            # 파일 권한: 644
-            find .next/static -type f -exec chmod 644 {} \; 2>/dev/null || true
-            # 최상위 디렉토리 권한 확인
-            chmod 755 .next/static 2>/dev/null || true
-            echo "✅ .next/static 권한 수정 완료"
-        fi
-        if [ -d "public" ]; then
-            # 디렉토리 권한: 755
-            find public -type d -exec chmod 755 {} \; 2>/dev/null || true
-            # 파일 권한: 644
-            find public -type f -exec chmod 644 {} \; 2>/dev/null || true
-            # 최상위 디렉토리 권한 확인
-            chmod 755 public 2>/dev/null || true
-            echo "✅ public 권한 수정 완료"
-        fi
-        
-        # 정적 파일 진단
-        if [ -f "./scripts/fix-static-files.sh" ]; then
-            bash ./scripts/fix-static-files.sh
-        fi
-        
-        # Nginx 재로드
-        echo "🔄 Nginx 재로드 중..."
-        sudo nginx -t && sudo systemctl reload nginx
-        echo "✅ Nginx 재로드 완료"
-EOF
+    # Nginx 재로드
+    echo "🔄 Nginx 재로드 중..."
+    ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} "sudo nginx -t && sudo systemctl reload nginx" || true
+    echo "✅ Nginx 재로드 완료"
 else
     echo "❌ 전환 실패. 기존 인스턴스가 계속 실행됩니다."
     echo "📊 현재 상태:"

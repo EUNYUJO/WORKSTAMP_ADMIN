@@ -13,9 +13,11 @@ const IndexPage: IDefaultLayoutPage = () => {
   const { session } = useAuth();
   const { data, error } = useDashboard();
 
+  const userName = session?.user?.name || session?.user?.email || "관리자";
+
   return (
     <>
-      <h2 className="title">👋 {session.user.name || "관리자"}님 안녕하세요!</h2>
+      <h2 className="title">👋 {userName}님 안녕하세요!</h2>
 
       <div className="my-5">
         {data ? (

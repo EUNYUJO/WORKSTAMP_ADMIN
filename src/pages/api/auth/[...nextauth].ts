@@ -5,6 +5,7 @@ import CredentialsProvider, { CredentialsConfig } from "next-auth/providers/cred
 import GithubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 
+
 const credentialsProviderOption: CredentialsConfig<{}> = {
   type: "credentials",
   id: "login-credentials",
@@ -167,10 +168,18 @@ export default NextAuth({
       return token;
     },
     session({ session, token }) {
-      session.user = { ...session.user, id: token.id as string, login: token.login as string };
-      session.accessToken = token.accessToken as string;
-      session.refreshToken = token.refreshToken as string;
-      return session;
+      const extendedSession = session as Session & {
+        accessToken?: string;
+        refreshToken?: string;
+      };
+      extendedSession.user = { ...session.user, id: token.id as string, login: token.login as string };
+      if (token.accessToken) {
+        extendedSession.accessToken = token.accessToken;
+      }
+      if (token.refreshToken) {
+        extendedSession.refreshToken = token.refreshToken;
+      }
+      return extendedSession;
     },
   },
 });

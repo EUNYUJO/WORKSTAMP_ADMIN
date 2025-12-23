@@ -1,4 +1,5 @@
 import { encryptPassword } from "@/lib/crypto";
+import { parseJwt, isTokenExpired } from "@/lib/jwt-utils";
 import NextAuth, { Session } from "next-auth";
 import { OAuthUserConfig } from "next-auth/providers";
 import CredentialsProvider, { CredentialsConfig } from "next-auth/providers/credentials";
@@ -44,7 +45,7 @@ const credentialsProviderOption: CredentialsConfig<{}> = {
         password: encryptedPassword,
       };
 
-      const loginUrl = `${API_ENDPOINT}/api/v1/auth/login`;
+      const loginUrl = `${API_ENDPOINT}/api/v1/auth/admin/login`;
       console.log("Request URL:", loginUrl);
       console.log("Request body:", { ...requestBody, password: encryptedPassword.substring(0, 30) + "..." });
 
@@ -146,6 +147,55 @@ const githubProviderOption: OAuthUserConfig<{}> = {
   profile: (profile: any) => ({ ...profile, image: profile.avatar_url }),
 };
 
+
+
+
+/**
+ * 토큰 갱신을 위한 헬퍼 함수
+ */
+async function refreshAccessToken(token: any) {
+  try {
+    const API_ENDPOINT = process.env.NEXT_PUBLIC_API_ENDPOINT || "http://3.39.247.194";
+    const url = `${API_ENDPOINT}/api/v1/auth/refresh`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        refreshToken: token.refreshToken,
+      }),
+    });
+
+    const refreshedTokens = await response.json();
+
+    if (!response.ok) {
+      throw refreshedTokens;
+    }
+
+    const { data } = refreshedTokens;
+
+    // 새로 발급받은 액세스 토큰의 만료 시간 파싱
+    const decoded = parseJwt(data.accessToken);
+    const exp = decoded?.exp ? decoded.exp * 1000 : Date.now() + 60 * 60 * 1000; // fallback 1 hour
+
+    return {
+      ...token,
+      accessToken: data.accessToken,
+      accessTokenExpires: exp,
+      refreshToken: token.refreshToken, // 리프레시 토큰은 재사용 (API가 새로 주지 않음)
+    };
+  } catch (error) {
+    console.error("RefreshAccessTokenError", error);
+
+    return {
+      ...token,
+      error: "RefreshAccessTokenError",
+    };
+  }
+}
+
 export default NextAuth({
   pages: {
     signIn: "/login",
@@ -158,27 +208,50 @@ export default NextAuth({
     GithubProvider(githubProviderOption),
   ],
   callbacks: {
-    jwt({ token, user }) {
-      if (user) {
-        token.id = (user as Session["user"]).id;
-        token.login = (user as Session["user"]).login;
-        token.accessToken = (user as any).accessToken;
-        token.refreshToken = (user as any).refreshToken;
+    async jwt({ token, user, account }) {
+      // 1. 초기 로그인 시
+      if (user && account) {
+        const accessToken = (user as any).accessToken;
+        const decoded = parseJwt(accessToken);
+        // 토큰 만료 시간 (ms)
+        const exp = decoded?.exp ? decoded.exp * 1000 : Date.now() + 60 * 60 * 1000;
+
+        return {
+          ...token,
+          accessToken: accessToken,
+          refreshToken: (user as any).refreshToken,
+          accessTokenExpires: exp,
+          id: (user as any).id,
+          login: (user as any).login,
+        };
       }
-      return token;
+
+      // 2. 토큰이 아직 유효한 경우 그대로 반환 (1분 버퍼)
+      if (token.accessTokenExpires && Date.now() < (token.accessTokenExpires as number) - 60 * 1000) {
+        return token;
+      }
+
+      // 3. 토큰이 만료된 경우 갱신 시도
+      console.log("Access token expired, refreshing...");
+      return await refreshAccessToken(token);
     },
-    session({ session, token }) {
+    async session({ session, token }) {
       const extendedSession = session as Session & {
         accessToken?: string;
         refreshToken?: string;
+        error?: string;
       };
-      extendedSession.user = { ...session.user, id: token.id as string, login: token.login as string };
-      if (token.accessToken) {
-        extendedSession.accessToken = token.accessToken;
-      }
-      if (token.refreshToken) {
-        extendedSession.refreshToken = token.refreshToken;
-      }
+
+      extendedSession.user = {
+        ...session.user,
+        id: token.id as string,
+        login: token.login as string
+      };
+
+      extendedSession.accessToken = token.accessToken as string;
+      extendedSession.refreshToken = token.refreshToken as string;
+      extendedSession.error = token.error as string;
+
       return extendedSession;
     },
   },

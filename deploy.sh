@@ -204,14 +204,27 @@ fi
 echo "📤 실행 스크립트 전송 중..."
 scp -i ${SSH_KEY} scripts/run.sh ${SERVER_USER}@${SERVER_HOST}:${APP_DIR}/
 
-# 9. Nginx 스크립트 전송
+# 9. Nginx 설정 파일 업로드 (WORKSTAMP_API의 nginx 설정 사용)
+echo "📤 Nginx 설정 파일 확인 중..."
+NGINX_CONF_SOURCE="../WORKSTAMP_API/nginx/workstamp.conf"
+if [ -f "$NGINX_CONF_SOURCE" ]; then
+    echo "📤 Nginx 설정 파일 전송 중..."
+    scp -i ${SSH_KEY} ${NGINX_CONF_SOURCE} ${SERVER_USER}@${SERVER_HOST}:/tmp/workstamp.conf
+    ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} "sudo cp /tmp/workstamp.conf /etc/nginx/conf.d/workstamp.conf && sudo nginx -t && sudo systemctl reload nginx" || echo "⚠️  Nginx 설정 업데이트 실패 (기존 설정 유지)"
+    echo "✅ Nginx 설정 파일 업로드 완료"
+else
+    echo "⚠️  Nginx 설정 파일을 찾을 수 없습니다: $NGINX_CONF_SOURCE"
+    echo "   수동으로 nginx 설정을 업데이트해주세요."
+fi
+
+# 10. Nginx 스크립트 전송
 if [ -f "scripts/update-nginx-upstream.sh" ]; then
     echo "📤 Nginx 업스트림 업데이트 스크립트 전송 중..."
     ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} "sudo rm -f ${APP_DIR}/update-nginx-upstream.sh 2>/dev/null || true"
     scp -i ${SSH_KEY} scripts/update-nginx-upstream.sh ${SERVER_USER}@${SERVER_HOST}:${APP_DIR}/
 fi
 
-# 10. 실행 권한 부여
+# 11. 실행 권한 부여
 echo "🔐 실행 권한 부여 중..."
 ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} "chmod +x ${APP_DIR}/run.sh"
 if [ -f "scripts/update-nginx-upstream.sh" ]; then
@@ -220,7 +233,7 @@ fi
 
 
 
-# 11. 무중단 배포 (블루-그린)
+# 12. 무중단 배포 (블루-그린)
 echo "🔄 무중단 배포 시작..."
 echo "📊 현재 상태 확인 중..."
 ssh -i ${SSH_KEY} ${SERVER_USER}@${SERVER_HOST} "cd ${APP_DIR} && DEPLOY_APP_NAME=${APP_NAME} DEPLOY_APP_DIR=${APP_DIR} ./run.sh status"

@@ -1,4 +1,4 @@
-import { IUser, IUsersResponse, getUsers, getUserAttendanceHistory, IAttendanceResponse, exportAttendanceHistory, getPendingUsers, approveUser, rejectUser } from "@/client/user";
+import { IUser, IUsersResponse, getUsers, getUserAttendanceHistory, IAttendanceResponse, IBreakTimeResponse, exportAttendanceHistory, getPendingUsers, approveUser, rejectUser } from "@/client/user";
 import { IAffiliation, getAllAffiliations } from "@/client/affiliation";
 import DefaultTable from "@/components/shared/ui/default-table";
 import DefaultTableBtn from "@/components/shared/ui/default-table-btn";
@@ -665,16 +665,24 @@ const UserList = () => {
               },
             },
             {
-              title: "휴식 시작",
-              dataIndex: "breakStartTime",
-              width: 150,
-              render: (value: string | null) => (value ? dayjs(value).format("HH:mm") : "-"),
-            },
-            {
-              title: "휴식 종료",
-              dataIndex: "breakEndTime",
-              width: 150,
-              render: (value: string | null) => (value ? dayjs(value).format("HH:mm") : "-"),
+              title: "휴식시간",
+              dataIndex: "breakTimes",
+              width: 200,
+              render: (breakTimes: IBreakTimeResponse[]) => {
+                if (!breakTimes || breakTimes.length === 0) {
+                  return "-";
+                }
+                return (
+                  <div style={{ fontSize: "12px" }}>
+                    {breakTimes.map((breakTime, index) => (
+                      <div key={breakTime.id} style={{ marginBottom: index < breakTimes.length - 1 ? "4px" : 0 }}>
+                        {dayjs(breakTime.startTime).format("HH:mm")}
+                        {breakTime.endTime ? ` - ${dayjs(breakTime.endTime).format("HH:mm")}` : " (진행중)"}
+                      </div>
+                    ))}
+                  </div>
+                );
+              },
             },
             {
               title: "배송 종료",

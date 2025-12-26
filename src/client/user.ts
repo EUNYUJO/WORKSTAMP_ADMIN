@@ -82,6 +82,14 @@ export interface IDepartureResponse {
   createdAt: string;
 }
 
+export interface IBreakTimeResponse {
+  id: number;
+  startTime: string;
+  endTime: string | null;
+  memo: string | null;
+  createdAt: string;
+}
+
 export type WaveType = "WAVE1" | "WAVE2" | "OFF";
 
 export interface IAttendanceResponse {
@@ -90,8 +98,7 @@ export interface IAttendanceResponse {
   workspaceId: number;
   workDate: string;
   entryTime: string | null;
-  breakStartTime: string | null;
-  breakEndTime: string | null;
+  breakTimes: IBreakTimeResponse[];
   deliveryEndTime: string | null;
   departures: IDepartureResponse[];
   status: "PRESENT" | "ABSENT" | "LATE" | "EARLY_LEAVE";

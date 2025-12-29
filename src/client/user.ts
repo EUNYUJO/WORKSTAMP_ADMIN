@@ -90,7 +90,7 @@ export interface IBreakTimeResponse {
   createdAt: string;
 }
 
-export type WaveType = "WAVE1" | "WAVE2" | "OFF";
+export type WaveType = "ENTRY" | "OFF";
 
 export interface IAttendanceResponse {
   attendanceId: number;
@@ -172,7 +172,7 @@ export const exportAttendanceHistory = async (params?: IExportAttendanceHistoryP
   }
   const queryString = queryParams.toString();
   const url = `${API_ENDPOINT}/api/admin/attendance/export${queryString ? `?${queryString}` : ""}`;
-  
+
   const session = await getSession();
   const response = await axios.get(url, {
     responseType: "blob",
@@ -181,7 +181,7 @@ export const exportAttendanceHistory = async (params?: IExportAttendanceHistoryP
     },
     withCredentials: true,
   });
-  
+
   return response.data;
 };
 

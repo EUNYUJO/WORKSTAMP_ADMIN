@@ -1,6 +1,6 @@
 import { fetchApi } from "./base";
 
-export type WaveType = "WAVE1" | "WAVE2" | "OFF";
+export type WaveType = "ENTRY" | "OFF";
 export type ScheduleStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface IWorkSchedule {

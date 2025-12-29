@@ -657,9 +657,8 @@ const UserList = () => {
               render: (wave: string | null) => {
                 if (!wave) return "-";
                 const waveMap: Record<string, string> = {
-                  WAVE1: "Wave1(야간)",
-                  WAVE2: "Wave2(주간)",
-                  OFF: "휴무",
+                  ENTRY: "입차",
+                  OFF: "미입차",
                 };
                 return waveMap[wave] || wave;
               },

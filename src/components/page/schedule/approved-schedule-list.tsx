@@ -72,12 +72,10 @@ const ApprovedScheduleList = () => {
     // WAVE 타입 표시
     const getWaveTypeTag = (waveType: string) => {
         switch (waveType) {
-            case "WAVE1":
-                return <Tag color="blue">야간</Tag>;
-            case "WAVE2":
-                return <Tag color="green">주간</Tag>;
+            case "ENTRY":
+                return <Tag color="green">입차</Tag>;
             case "OFF":
-                return <Tag color="default">휴무</Tag>;
+                return <Tag color="default">미입차</Tag>;
             default:
                 return <Tag>{waveType}</Tag>;
         }
